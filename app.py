@@ -70,20 +70,16 @@ def get_disk_usage():
         None
 
     Returns:
-        dict: A dictionary containing disk usage statistics with the following keys:
-            - total (str): Total disk space in GB
-            - used (str): Used disk space in GB
-            - free (str): Free disk space in GB
+        str: A formatted string containing disk usage statistics with the total, used, and free disk space.
     """
     path = "/"
     total, used, free = shutil.disk_usage(path)
     gb = 1024 * 1024 * 1024
 
-    return {
-        "total": f"{total / gb:.2f} GB",
-        "used": f"{used / gb:.2f} GB",
-        "free": f"{free / gb:.2f} GB"
-    }
+    return (f"Total Disk Space: {total / gb:.2f} GB\n"
+            f"Used Disk Space: {used / gb:.2f} GB\n"
+            f"Free Disk Space: {free / gb:.2f} GB")
+
 
 
 @tool(parse_docstring=True)
