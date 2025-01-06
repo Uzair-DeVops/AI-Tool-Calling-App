@@ -8,18 +8,18 @@ from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 st.title("Tool Calling with Gemini")
-st.sidebar.title("Available Tools")
+st.sidebar.title("Available Tools 10")
 tools = [
     "get_time_in_timezone",
     "get_disk_usage",
     "get_weather",
     "search_image",
-    "get_location_from_ip",
     "get_ip_address",
     "get_stock_price",
     "get_distance",
     "get_latest_news",
-    "get_movie_details"
+    "get_movie_details",
+    "get_recipe"
 ]
 
 tool_descriptions = {
@@ -27,17 +27,18 @@ tool_descriptions = {
     "get_disk_usage": "Shows the current disk usage on your system.",
     "get_weather": "Fetches the current weather for a given location. Example: 'Karachi'.",
     "search_image": "Searches for images based on the query keyword. Example: 'Mountain'.",
-    "get_location_from_ip": "Fetches the geographic location based on the user's IP address.",
     "get_ip_address": "Fetches the public IP address of the user.",
     "get_stock_price": "Shows the current stock price for a given stock symbol. Example: 'AAPL'.",
     "get_distance": "Calculates the distance between two locations. Example: 'Karachi' and 'Lahore'.",
     "get_latest_news": "Shows the latest news headlines.",
-    "get_movie_details": "Fetches details of a movie based on its title. Example: 'Inception'."
+    "get_movie_details": "Fetches details of a movie based on its title. Example: 'Inception'.",
+    "get_recipe": "Fetches a recipe for a given dish. Example: 'Chicken Biryani'."
 }
+
 
 # Display available tools and description in the sidebar
 for tool_name in tools:
-    st.sidebar.markdown(f"### {tool_name}")
+    st.sidebar.markdown(f"# {tool_name}")
     st.sidebar.markdown(tool_descriptions[tool_name])
     st.sidebar.markdown("---")
 
@@ -79,10 +80,9 @@ def get_disk_usage():
     gb = 1024 * 1024 * 1024
 
     return {
-        "get_disk_usage Tool is used to get disk usage"
         "total": f"{total / gb:.2f} GB",
         "used": f"{used / gb:.2f} GB",
-        "free": f"{free / gb:.2f} GB",
+        "free": f"{free / gb:.2f} GB"
     }
 
 
@@ -189,37 +189,6 @@ def search_image(query: str):
     else:
         return f"Error: Could not find images for {query}.\nTool used: search_image"
 
-
-@tool(parse_docstring=True)
-def get_location_from_ip(ip: str) -> str:
-    """Fetches the geographic location based on the user's IP address.
-
-    Args:
-        ip (str): The IP address for which the geographic location is to be fetched.
-
-    Returns:
-        str: A message containing the city name where the user is located.
-    """
-    api_key = "0634ae5d5416390be3cdbd23dbd4f572"  # Your API key
-    url = f"https://ipapi.co/{ip}/json/?access_key={api_key}"
-    
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        data = response.json()
-
-        if 'city' in data:
-            location = data['city']
-            return f"Tool used: get_location_from_ip\n get_location_from_ip is used to find The user is located in {location}."
-        else:
-            return f"Error: Location data is missing in the response. Response: {data}"
-
-    except requests.exceptions.HTTPError as http_err:
-        return f"HTTP error occurred: {http_err} (Status code: {response.status_code})"
-    except requests.exceptions.RequestException as req_err:
-        return f"Error occurred while making the request: {req_err}"
-    except Exception as e:
-        return f"Error: Unexpected error - {str(e)}"
 
 
 @tool(parse_docstring=True)
@@ -426,17 +395,61 @@ def get_movie_details(movie_name: str) -> str:
     except Exception as e:
         return f"Tool used: get_movie_details\nError fetching movie details: {str(e)}"
 
+import requests
+
+@tool(parse_docstring=True)
+def get_recipe(dish_name: str) -> str:
+    """Fetches a recipe for a given dish name using the Spoonacular API.
+
+    Args:
+        dish_name (str): The name of the dish for which the recipe is to be fetched.
+
+    Returns:
+        str: The recipe with ingredients and instructions.
+    """
+    try:
+        api_key = '716e3a77f3e841669be0a6974ff05b9b'  # Replace with your Spoonacular API key
+        url = f"https://api.spoonacular.com/recipes/complexSearch?query={dish_name}&apiKey={api_key}&number=1"
+        response = requests.get(url)
+        data = response.json()
+
+        if data.get('results'):
+            recipe_id = data['results'][0]['id']
+            recipe_title = data['results'][0]['title']
+            
+            # Fetch detailed recipe information
+            details_url = f"https://api.spoonacular.com/recipes/{recipe_id}/information?apiKey={api_key}"
+            details_response = requests.get(details_url)
+            details_data = details_response.json()
+            
+            ingredients = details_data.get('extendedIngredients', [])
+            instructions = details_data.get('instructions', 'No instructions available.')
+
+            # Create the recipe text
+            recipe_text = f"Recipe for {recipe_title}:\n\nIngredients:\n"
+            for ingredient in ingredients:
+                recipe_text += f"- {ingredient['original']}\n"
+            
+            recipe_text += f"\nInstructions:\n{instructions}"
+            
+            return f"Tool used: get_recipe\n{recipe_text}"
+        else:
+            return f"Error: Could not find a recipe for {dish_name}. Try another dish name."
+    except Exception as e:
+        return f"Error: Unable to fetch recipe. Details: {str(e)}"
+
+
 tools_list = {
     "get_time_in_timezone": get_time_in_timezone,
     "get_disk_usage": get_disk_usage,
     "get_weather": get_weather,
     "search_image": search_image,
-    "get_location_from_ip": get_location_from_ip,
     "get_ip_address": get_ip_address,
     "get_stock_price": get_stock_price,
     "get_distance": get_distance,
     "get_latest_news": get_latest_news,
-    "get_movie_details": get_movie_details
+    "get_movie_details": get_movie_details,
+    "get_recipe": get_recipe
 }
 
 if prompt:
@@ -452,14 +465,21 @@ if prompt:
     if not ai_response.tool_calls:
         with st.container(height=500, border=True):
             st.write(ai_response.content)
-            sys.exit()
+            # Check if the response contains the stop condition
+            if "stop" in ai_response.content.lower():  # Example stop condition
+                st.write("Execution stopped as requested.")
+                sys.exit()  # Exit the program if stop condition is met
 
     for tool_call in ai_response.tool_calls:
-
         selected_tool = tools_list.get(tool_call["name"].lower())
         tool_response = selected_tool.invoke(tool_call["args"])
 
         messages.append(ToolMessage(tool_response, tool_call_id=tool_call["id"]))
+
+        # Check for stop condition in tool responses
+        if "stop" in tool_response.lower():  # Example stop condition in tool response
+            st.write("Execution stopped as requested.")
+            sys.exit()  # Exit the program if stop condition is met
 
     final_response = llm_with_tools.stream(messages)
     with st.container(height=500, border=True):
